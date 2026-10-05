@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pencatatan Data Pertanahan & Ringkasan Progress</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Style kustom untuk tabel bergaya spreadsheet */
+        .table-custom th, .table-custom td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            font-size: 0.875rem;
+        }
+        .header-blue {
+            background-color: #1d4ed8;
+            color: #ffffff;
+        }
+        .bg-progress-yellow {
+            background-color: #facc15;
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 min-h-screen flex flex-col gap-5 pb-20 lg:pb-6">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white shadow-md rounded-xl p-4 md:p-5 border-l-8 border-blue-700 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fa-solid fa-file-contract text-blue-700"></i>
+                Sistem Pencatatan Pertanahan
+            </h1>
+            <p class="text-xs md:text-sm text-gray-500">Aplikasi input data berkas pertanahan dan pemantauan progress petugas (Offline-Ready)</p>
+        </div>
+        <div class="flex flex-wrap gap-2 w-full md:w-auto justify-end">
+            <button onclick="exportToCSV()" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg text-xs md:text-sm flex items-center justify-center gap-2 shadow transition">
+                <i class="fa-solid fa-file-excel"></i> Export CSV
+            </button>
+            <button onclick="clearAllData()" class="flex-1 md:flex-none bg-red-500 hover:bg-red-600 text-white font-medium px-3 py-2 rounded-lg text-xs md:text-sm flex items-center justify-center gap-2 shadow transition">
+                <i class="fa-solid fa-trash-can"></i> Reset Data
+            </button>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs khusus Layar HP/Tablet (< lg) -->
+    <div class="lg:hidden bg-white shadow-md rounded-xl p-1.5 flex gap-1 border border-gray-200">
+        <button id="tabBtnData" onclick="switchTab('data')" class="flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-2 transition bg-blue-600 text-white shadow">
+            <i class="fa-solid fa-table-cells"></i> Input & Data Berkas
+        </button>
+        <button id="tabBtnProgress" onclick="switchTab('progress')" class="flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-2 transition text-gray-600 hover:bg-gray-100">
+            <i class="fa-solid fa-chart-column text-yellow-600"></i> Ringkasan Progress
+        </button>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+
+        <!-- KELOMPOK TAB DATA & FORM (Kiri / Tab 1) -->
+        <div id="sectionData" class="lg:col-span-3 flex flex-col gap-6">
+            
+            <!-- Form Input Data Pertanahan -->
+            <section class="bg-white rounded-xl shadow-md p-4 md:p-5 border border-gray-200">
+                <h2 class="text-base md:text-lg font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-square-plus text-blue-600"></i> Form Input Data Pertanahan
+                </h2>
+                
+                <form id="landForm" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <input type="hidden" id="editIndex" value="-1">
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Tanggal *</label>
+                        <input type="date" id="tanggal" required class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Petugas Magang *</label>
+                        <input type="text" id="petugas" list="petugasList" placeholder="Nama Petugas" required class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <datalist id="petugasList">
+                            <option value="Fauzan"></option>
+                            <option value="Akbar"></option>
+                            <option value="Pipi"></option>
+                        </datalist>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Kecamatan</label>
+                        <input type="text" id="kecamatan" placeholder="Contoh: Obi" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Desa</label>
+                        <input type="text" id="desa" placeholder="Contoh: Sambiki" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nomor Sertifikat</label>
+                        <input type="text" id="noSertifikat" placeholder="27.05.06.01.1.00255" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Surat Ukur</label>
+                        <input type="text" id="suratUkur" placeholder="SU.00217/2014" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">NIB</label>
+                        <input type="text" id="nib" placeholder="00255" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Luas (m²)</label>
+                        <input type="number" id="luas" placeholder="355" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">KW</label>
+                        <input type="text" id="kw" placeholder="KW5" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">No Berkas</label>
+                        <input type="text" id="noBerkas" placeholder="5872" class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Keterangan</label>
+                        <input type="text" id="keterangan" placeholder="Catatan tambahan..." class="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div class="sm:col-span-2 md:col-span-3 lg:col-span-4 flex flex-wrap items-center gap-6 bg-gray-50 p-3 rounded-lg border">
+                        <label class="flex items-center gap-2 cursor-pointer text-xs md:text-sm font-medium text-gray-700">
+                            <input type="checkbox" id="identifikasiOffline" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                            Identifikasi Offline
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer text-xs md:text-sm font-medium text-gray-700">
+                            <input type="checkbox" id="peningkatanKW" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                            Peningkatan KW (Online)
+                        </label>
+                    </div>
+
+                    <div class="sm:col-span-2 md:col-span-3 lg:col-span-4 flex justify-end gap-3 mt-2">
+                        <button type="button" onclick="resetForm()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg font-medium text-xs md:text-sm transition">
+                            Batal
+                        </button>
+                        <button type="submit" id="btnSubmit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium text-xs md:text-sm shadow transition flex items-center gap-2">
+                            <i class="fa-solid fa-floppy-disk"></i> Simpan Data
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Tabel Data Utama dengan Fitur Filter Pencarian -->
+            <div class="bg-white rounded-xl shadow-md p-4 border border-gray-200 overflow-hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h2 class="text-base font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-blue-600"></i> Data Berkas Pertanahan
+                    </h2>
+                    <span id="totalDataBadge" class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">0 Bidang</span>
+                </div>
+
+                <!-- BARIS FILTER PENCARIAN TANGGAL DAN NAMA -->
+                <div class="bg-blue-50/70 p-3 rounded-xl border border-blue-100 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">
+                            <i class="fa-solid fa-magnifying-glass text-blue-600"></i> Cari Nama Petugas
+                        </label>
+                        <input type="text" id="searchName" oninput="renderMainTable()" placeholder="Ketik nama petugas..." class="w-full bg-white rounded-lg border border-gray-300 p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">
+                            <i class="fa-solid fa-calendar-day text-blue-600"></i> Filter Tanggal
+                        </label>
+                        <input type="date" id="searchDate" onchange="renderMainTable()" class="w-full bg-white rounded-lg border border-gray-300 p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="clearSearchFilter()" class="w-full bg-white hover:bg-gray-100 text-gray-700 font-medium p-2 rounded-lg border border-gray-300 text-xs transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-rotate-left text-gray-500"></i> Reset Filter
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left table-custom border-collapse">
+                        <thead>
+                            <tr class="header-blue text-center text-xs">
+                                <th class="w-24">Tanggal</th>
+                                <th>Petugas</th>
+                                <th>Kecamatan</th>
+                                <th>Desa</th>
+                                <th>Nomor Sertifikat</th>
+                                <th>Surat Ukur</th>
+                                <th>NIB</th>
+                                <th>Luas</th>
+                                <th>KW</th>
+                                <th class="w-12">Offline</th>
+                                <th>No Berkas</th>
+                                <th class="w-12">Online</th>
+                                <th>Keterangan</th>
+                                <th class="w-16">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="text-center text-gray-700">
+                            <!-- Content via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB RINGKASAN PROGRESS (Kanan / Tab 2) -->
+        <div id="sectionProgress" class="hidden lg:block lg:col-span-1 bg-white rounded-xl shadow-md p-4 border border-gray-200">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h2 class="text-base font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-yellow-600"></i> Ringkasan Progress
+                </h2>
+                <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded font-medium">Harian</span>
+            </div>
+
+            <div id="progressContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+                <!-- Tabel Progress Kuning akan di-render di sini -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Fixed Bottom Navigation Bar untuk Smartphone -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg flex justify-around p-2 z-40">
+        <button id="bottomBtnData" onclick="switchTab('data')" class="flex flex-col items-center gap-1 text-blue-600 font-bold text-xs">
+            <i class="fa-solid fa-table-cells text-lg"></i>
+            <span>Data Berkas</span>
+        </button>
+        <button id="bottomBtnProgress" onclick="switchTab('progress')" class="flex flex-col items-center gap-1 text-gray-500 font-medium text-xs">
+            <i class="fa-solid fa-chart-column text-lg"></i>
+            <span>Progress</span>
+        </button>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-16 lg:bottom-5 right-5 hidden bg-gray-800 text-white px-4 py-3 rounded-lg shadow-xl text-sm z-50 flex items-center gap-2">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toastMessage">Pesan Notifikasi</span>
+    </div>
+
+    <script>
+        const initialSampleData = [
+            { tanggal: '2026-10-02', petugas: 'Fauzan', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00255', suratUkur: 'SU.00217/2014', nib: '00255', luas: '355', kw: 'KW5', offline: true, noBerkas: '5872', online: true, keterangan: '' },
+            { tanggal: '2026-10-02', petugas: 'Fauzan', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00257', suratUkur: 'SU.00219/2014', nib: '00257', luas: '374', kw: 'KW5', offline: true, noBerkas: '5872', online: true, keterangan: '' },
+            { tanggal: '2026-10-02', petugas: 'Akbar', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00263', suratUkur: 'SU.00225/2014', nib: '00263', luas: '374', kw: 'KW5', offline: true, noBerkas: '5866', online: true, keterangan: '' },
+            { tanggal: '2026-10-02', petugas: 'Akbar', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00264', suratUkur: 'SU.00226/2014', nib: '00264', luas: '374', kw: 'KW5', offline: true, noBerkas: '5866', online: true, keterangan: '' },
+            { tanggal: '2026-10-02', petugas: 'Pipi', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00265', suratUkur: 'SU.00227/2014', nib: '00265', luas: '374', kw: 'KW5', offline: true, noBerkas: '5866', online: true, keterangan: '' },
+            { tanggal: '2026-10-02', petugas: 'Pipi', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00267', suratUkur: 'SU.00229/2014', nib: '00267', luas: '439', kw: 'KW5', offline: true, noBerkas: '5866', online: true, keterangan: '' },
+            { tanggal: '2026-10-05', petugas: 'Fauzan', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00258', suratUkur: 'SU.00220/2014', nib: '00258', luas: '388', kw: 'KW5', offline: true, noBerkas: '-', online: false, keterangan: '' },
+            { tanggal: '2026-10-05', petugas: 'Fauzan', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00259', suratUkur: 'SU.00221/2020', nib: '00259', luas: '466', kw: 'KW5', offline: true, noBerkas: '-', online: false, keterangan: '' },
+            { tanggal: '2026-10-05', petugas: 'Fauzan', kecamatan: 'Obi', desa: 'Sambiki', noSertifikat: '27.05.06.01.1.00262', suratUkur: 'SU.00224/2014', nib: '00262', luas: '375', kw: 'KW5', offline: true, noBerkas: '-', online: false, keterangan: '' }
+        ];
+
+        let landRecords = [];
+        let activeTab = 'data';
+
+        window.onload = function() {
+            const storedData = localStorage.getItem('landRecordsData');
+            if (storedData) {
+                landRecords = JSON.parse(storedData);
+            } else {
+                landRecords = [...initialSampleData];
+                saveToLocalStorage();
+            }
+            renderAll();
+        };
+
+        function saveToLocalStorage() {
+            localStorage.setItem('landRecordsData', JSON.stringify(landRecords));
+        }
+
+        function switchTab(tabName) {
+            activeTab = tabName;
+            const secData = document.getElementById('sectionData');
+            const secProgress = document.getElementById('sectionProgress');
+            
+            const btnData = document.getElementById('tabBtnData');
+            const btnProgress = document.getElementById('tabBtnProgress');
+            
+            const btmData = document.getElementById('bottomBtnData');
+            const btmProgress = document.getElementById('bottomBtnProgress');
+
+            if (tabName === 'data') {
+                secData.classList.remove('hidden');
+                secProgress.classList.add('hidden');
+                if (window.innerWidth >= 1024) secProgress.classList.remove('hidden');
+
+                btnData.className = "flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-2 transition bg-blue-600 text-white shadow";
+                btnProgress.className = "flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-2 transition text-gray-600 hover:bg-gray-100";
+
+                btmData.className = "flex flex-col items-center gap-1 text-blue-600 font-bold text-xs";
+                btmProgress.className = "flex flex-col items-center gap-1 text-gray-500 font-medium text-xs";
+            } else {
+                secData.classList.add('hidden');
+                secProgress.classList.remove('hidden');
+
+                btnData.className = "flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-2 transition text-gray-600 hover:bg-gray-100";
+                btnProgress.className = "flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-2 transition bg-yellow-500 text-white shadow";
+
+                btmData.className = "flex flex-col items-center gap-1 text-gray-500 font-medium text-xs";
+                btmProgress.className = "flex flex-col items-center gap-1 text-yellow-600 font-bold text-xs";
+            }
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.innerText = message;
+            toastIcon.className = isError ? "fa-solid fa-circle-xmark text-red-400" : "fa-solid fa-circle-check text-green-400";
+
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const editIndex = parseInt(document.getElementById('editIndex').value);
+            const record = {
+                tanggal: document.getElementById('tanggal').value,
+                petugas: document.getElementById('petugas').value.trim(),
+                kecamatan: document.getElementById('kecamatan').value.trim() || '-',
+                desa: document.getElementById('desa').value.trim() || '-',
+                noSertifikat: document.getElementById('noSertifikat').value.trim() || '-',
+                suratUkur: document.getElementById('suratUkur').value.trim() || '-',
+                nib: document.getElementById('nib').value.trim() || '-',
+                luas: document.getElementById('luas').value || '-',
+                kw: document.getElementById('kw').value.trim() || '-',
+                offline: document.getElementById('identifikasiOffline').checked,
+                noBerkas: document.getElementById('noBerkas').value.trim() || '-',
+                online: document.getElementById('peningkatanKW').checked,
+                keterangan: document.getElementById('keterangan').value.trim() || ''
+            };
+
+            if (editIndex >= 0) {
+                landRecords[editIndex] = record;
+                showToast("Data berhasil diperbarui!");
+            } else {
+                landRecords.push(record);
+                showToast("Data baru berhasil ditambahkan!");
+            }
+
+            saveToLocalStorage();
+            resetForm();
+            renderAll();
+        }
+
+        function editRecord(index) {
+            const rec = landRecords[index];
+            document.getElementById('editIndex').value = index;
+            document.getElementById('tanggal').value = rec.tanggal;
+            document.getElementById('petugas').value = rec.petugas;
+            document.getElementById('kecamatan').value = rec.kecamatan === '-' ? '' : rec.kecamatan;
+            document.getElementById('desa').value = rec.desa === '-' ? '' : rec.desa;
+            document.getElementById('noSertifikat').value = rec.noSertifikat === '-' ? '' : rec.noSertifikat;
+            document.getElementById('suratUkur').value = rec.suratUkur === '-' ? '' : rec.suratUkur;
+            document.getElementById('nib').value = rec.nib === '-' ? '' : rec.nib;
+            document.getElementById('luas').value = rec.luas === '-' ? '' : rec.luas;
+            document.getElementById('kw').value = rec.kw === '-' ? '' : rec.kw;
+            document.getElementById('identifikasiOffline').checked = rec.offline;
+            document.getElementById('noBerkas').value = rec.noBerkas === '-' ? '' : rec.noBerkas;
+            document.getElementById('peningkatanKW').checked = rec.online;
+            document.getElementById('keterangan').value = rec.keterangan;
+
+            document.getElementById('btnSubmit').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Update Data`;
+            if (window.innerWidth < 1024) switchTab('data');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteRecord(index) {
+            if (confirm("Apakah Anda yakin ingin menghapus data ini?")) {
+                landRecords.splice(index, 1);
+                saveToLocalStorage();
+                renderAll();
+                showToast("Data telah dihapus.");
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('landForm').reset();
+            document.getElementById('editIndex').value = "-1";
+            document.getElementById('btnSubmit').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Simpan Data`;
+        }
+
+        function clearAllData() {
+            if (confirm("Apakah Anda yakin ingin mengosongkan SELURUH data?")) {
+                landRecords = [];
+                saveToLocalStorage();
+                renderAll();
+                showToast("Seluruh data berhasil di-reset.", true);
+            }
+        }
+
+        function clearSearchFilter() {
+            document.getElementById('searchName').value = '';
+            document.getElementById('searchDate').value = '';
+            renderMainTable();
+        }
+
+        function renderAll() {
+            renderMainTable();
+            renderProgressTable();
+        }
+
+        // Render Tabel Utama dengan dukungan Pencarian & Filter
+        function renderMainTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            const searchNameVal = document.getElementById('searchName').value.toLowerCase().trim();
+            const searchDateVal = document.getElementById('searchDate').value;
+
+            // Filter Data
+            const filteredRecords = landRecords.filter(rec => {
+                const matchName = !searchNameVal || rec.petugas.toLowerCase().includes(searchNameVal);
+                const matchDate = !searchDateVal || rec.tanggal === searchDateVal;
+                return matchName && matchDate;
+            });
+
+            document.getElementById('totalDataBadge').innerText = `${filteredRecords.length} / ${landRecords.length} Bidang`;
+
+            if (filteredRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="14" class="py-4 text-center text-gray-400">Data tidak ditemukan.</td></tr>`;
+                return;
+            }
+
+            filteredRecords.forEach((rec) => {
+                // Cari index asli data di array landRecords untuk keperluan edit & delete
+                const originalIndex = landRecords.indexOf(rec);
+
+                const tr = document.createElement('tr');
+                tr.className = originalIndex % 2 === 0 ? 'bg-white hover:bg-blue-50/50' : 'bg-gray-50 hover:bg-blue-50/50';
+
+                tr.innerHTML = `
+                    <td class="font-medium text-gray-800">${formatDateDisplay(rec.tanggal)}</td>
+                    <td class="font-semibold text-gray-700">${rec.petugas}</td>
+                    <td>${rec.kecamatan}</td>
+                    <td>${rec.desa}</td>
+                    <td class="font-mono text-xs">${rec.noSertifikat}</td>
+                    <td class="font-mono text-xs">${rec.suratUkur}</td>
+                    <td class="font-mono text-xs">${rec.nib}</td>
+                    <td>${rec.luas}</td>
+                    <td>${rec.kw}</td>
+                    <td>${rec.offline ? '<i class="fa-solid fa-square-check text-blue-600 text-base"></i>' : '<i class="fa-regular fa-square text-gray-400 text-base"></i>'}</td>
+                    <td class="font-mono text-xs">${rec.noBerkas}</td>
+                    <td>${rec.online ? '<i class="fa-solid fa-square-check text-blue-600 text-base"></i>' : '<i class="fa-regular fa-square text-gray-400 text-base"></i>'}</td>
+                    <td class="text-left text-xs">${rec.keterangan || '-'}</td>
+                    <td>
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="editRecord(${originalIndex})" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="deleteRecord(${originalIndex})" class="text-red-500 hover:text-red-700 p-1" title="Hapus">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Tabel Progress Warna Kuning
+        function renderProgressTable() {
+            const container = document.getElementById('progressContainer');
+            container.innerHTML = '';
+
+            if (landRecords.length === 0) {
+                container.innerHTML = `<div class="text-center text-sm text-gray-400 py-4">Belum ada progress.</div>`;
+                return;
+            }
+
+            const uniqueDates = [...new Set(landRecords.map(r => r.tanggal))].sort().reverse();
+            const defaultPetugas = ['Fauzan', 'Akbar', 'Pipi'];
+            const customPetugas = [...new Set(landRecords.map(r => r.petugas))];
+            const allPetugas = [...new Set([...defaultPetugas, ...customPetugas])];
+
+            uniqueDates.forEach(date => {
+                const tableWrapper = document.createElement('div');
+                tableWrapper.className = "border-2 border-yellow-500 rounded-lg overflow-hidden shadow-sm";
+
+                let rowsHtml = '';
+
+                allPetugas.forEach(petugas => {
+                    const recordsForUser = landRecords.filter(r => r.tanggal === date && r.petugas === petugas);
+                    
+                    const offlineCount = recordsForUser.filter(r => r.offline).length;
+                    const onlineCount = recordsForUser.filter(r => r.online).length;
+
+                    const offlineText = recordsForUser.length > 0 ? `${offlineCount} Bidang` : '';
+                    const onlineText = recordsForUser.length > 0 ? `${onlineCount} Bidang` : '';
+
+                    rowsHtml += `
+                        <tr class="text-center font-medium">
+                            <td class="bg-yellow-100 font-semibold text-gray-800 text-xs w-1/3 border-r border-b border-yellow-300">${petugas}</td>
+                            <td class="bg-yellow-50 text-gray-800 text-xs w-1/3 border-r border-b border-yellow-300">${offlineText}</td>
+                            <td class="bg-yellow-50 text-gray-800 text-xs w-1/3 border-b border-yellow-300">${onlineText}</td>
+                        </tr>
+                    `;
+                });
+
+                tableWrapper.innerHTML = `
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-progress-yellow text-gray-900 font-bold text-center border-b-2 border-yellow-500">
+                                <th colspan="3" class="py-1.5 text-sm tracking-wide">Progress</th>
+                            </tr>
+                            <tr class="bg-yellow-200 text-gray-900 font-bold text-center border-b border-yellow-400 text-xs">
+                                <th class="py-1 border-r border-yellow-400">${formatDateDisplay(date)}</th>
+                                <th class="py-1 border-r border-yellow-400 w-1/3">Offline</th>
+                                <th class="py-1 w-1/3">Online</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                `;
+
+                container.appendChild(tableWrapper);
+            });
+        }
+
+        // Export data ke file CSV / Excel
+        function exportToCSV() {
+            if (landRecords.length === 0) {
+                showToast("Tidak ada data untuk diexport!", true);
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Tanggal,Petugas,Kecamatan,Desa,Nomor Sertifikat,Surat Ukur,NIB,Luas,KW,Identifikasi Offline,No Berkas,Peningkatan KW,Keterangan\n";
+
+            landRecords.forEach(r => {
+                const row = [
+                    `"${r.tanggal}"`,
+                    `"${r.petugas}"`,
+                    `"${r.kecamatan}"`,
+                    `"${r.desa}"`,
+                    `"${r.noSertifikat}"`,
+                    `"${r.suratUkur}"`,
+                    `"${r.nib}"`,
+                    `"${r.luas}"`,
+                    `"${r.kw}"`,
+                    `"${r.offline ? 'V' : ''}"`,
+                    `"${r.noBerkas}"`,
+                    `"${r.online ? 'V' : ''}"`,
+                    `"${r.keterangan}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Progress_Pertanahan_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("File CSV berhasil di-download!");
+        }
+
+        window.onresize = function() {
+            if (window.innerWidth >= 1024) {
+                document.getElementById('sectionData').classList.remove('hidden');
+                document.getElementById('sectionProgress').classList.remove('hidden');
+            } else {
+                switchTab(activeTab);
+            }
+        };
+    </script>
+</body>
+</html>
